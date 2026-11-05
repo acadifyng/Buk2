@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge, priority_pill, pager %}
+{% block title %}My complaints{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>Hello, {{ g.user['full_name'].split(' ')[0] }}</h1><p class="muted">Here is where your complaints stand.</p></div>
+  <a class="btn" href="{{ url_for('student.new') }}">+ New complaint</a></div>
+<div class="stat-row">
+  <div class="stat"><span class="num" data-count="{{ stats.total }}">0</span><span>Total</span></div>
+  <div class="stat"><span class="num" data-count="{{ stats.open }}">0</span><span>In progress</span></div>
+  <div class="stat"><span class="num" data-count="{{ stats.done }}">0</span><span>Resolved</span></div>
+</div>
+<section class="card">
+  <div class="tabs">
+    <a class="{{ 'on' if tab == 'all' else '' }}" href="{{ url_for('student.home') }}">All</a>
+    <a class="{{ 'on' if tab == 'open' else '' }}" href="{{ url_for('student.home', tab='open') }}">Open</a>
+    <a class="{{ 'on' if tab == 'resolved' else '' }}" href="{{ url_for('student.home', tab='resolved') }}">Resolved</a>
+  </div>
+  {% if items %}
+  <div class="list">
+    {% for i in items %}
+    <a class="row-card" href="{{ url_for('student.view', reference=i.reference) }}">
+      <div><strong>{{ i.title }}</strong><div class="muted small">{{ i.reference }} &middot; {{ category_label(i.category) }} &middot; {{ i.created_at|when }}</div></div>
+      <div class="row-badges">{{ priority_pill(i.priority) }} {{ status_badge(i.status) }}</div>
+    </a>
+    {% endfor %}
+  </div>
+  {{ pager(page) }}
+  {% else %}
+  <div class="empty"><p>No complaints here yet.</p><a class="btn small" href="{{ url_for('student.new') }}">Submit your first complaint</a></div>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,71 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge, priority_pill, stepper, timeline, conversation, files_list, stars %}
+{% block title %}{{ c['reference'] }}{% endblock %}
+{% block content %}
+<p><a href="{{ url_for('staff.home') }}">&larr; Assigned complaints</a></p>
+<section class="card">
+  <h1>{{ title }}</h1>
+  <p><strong>{{ c['reference'] }}</strong> &middot; {{ category_label(c['category']) }} &middot; {{ priority_pill(c['priority']) }} {{ status_badge(c['status']) }}{% if c['escalated'] %} <span class="late">Escalated</span>{% endif %}</p>
+  {{ stepper(c['status']) }}
+  <p class="muted">From:
+    {% if c['anonymous'] %}<strong>Anonymous student</strong> (the student chose to hide their identity){% else %}<strong>{{ c['student_name'] }}</strong> ({{ c['matric_no'] }}){% endif %}
+    &middot; Submitted {{ c['created_at']|when }} &middot;
+    {% if c['status'] in ('Resolved', 'Closed') %}Resolved{% elif overdue %}<span class="late">Overdue since {{ c['due_at']|when }}</span>{% else %}Due {{ c['due_at']|when }}{% endif %}</p>
+</section>
+<div class="two-col">
+  <div>
+    <section class="card"><h2>Complaint</h2><p class="pre">{{ description }}</p><h3>Evidence</h3>{{ files_list(files) }}</section>
+    <section class="card">
+      <h2>Conversation</h2>
+      {{ conversation(messages) }}
+      {% if c['status'] != 'Closed' %}
+      <form method="post" action="{{ url_for('staff.respond', reference=c['reference']) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="message">Reply to the student</label>
+        <select class="quick-select" data-target="message" aria-label="Quick replies"><option value="">Insert a quick reply...</option>{% for q in quick %}<option value="{{ q }}">{{ q[:60] }}{{ '...' if q|length > 60 }}</option>{% endfor %}</select>
+        <textarea id="message" name="message" rows="5" maxlength="2000" required></textarea>
+        <button class="btn small" type="submit">Send response</button>
+      </form>
+      {% endif %}
+      <form method="post" action="{{ url_for('staff.note', reference=c['reference']) }}" class="note-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="note">Internal note (staff only)</label>
+        <textarea id="note" name="message" rows="3" maxlength="2000" required></textarea>
+        <button class="btn small ghost" type="submit">Save note</button>
+      </form>
+    </section>
+  </div>
+  <div>
+    {% if next_statuses %}
+    <section class="card"><h2>Update status</h2>
+      <form method="post" action="{{ url_for('staff.status', reference=c['reference']) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <select name="status" aria-label="New status">{% for s in next_statuses %}<option value="{{ s }}">{{ s }}</option>{% endfor %}</select>
+        <input name="note" maxlength="200" placeholder="Note for the timeline (optional)">
+        <button class="btn small" type="submit">Change status</button>
+      </form>
+    </section>
+    {% endif %}
+    <section class="card"><h2>Priority</h2>
+      <form method="post" action="{{ url_for('staff.priority', reference=c['reference']) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <select name="priority" aria-label="Priority">{% for p in priorities %}<option value="{{ p }}" {{ 'selected' if p == c['priority'] }}>{{ p }}</option>{% endfor %}</select>
+        <button class="btn small ghost" type="submit">Set priority</button>
+      </form>
+    </section>
+    {% if c['status'] != 'Closed' %}
+    <section class="card"><h2>Send to another office</h2>
+      <form method="post" action="{{ url_for('staff.reassign', reference=c['reference']) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <select name="target" aria-label="Office">{% for t in targets %}<option value="{{ t }}">{{ role_label(t) }}</option>{% endfor %}</select>
+        <input name="reason" maxlength="200" placeholder="Reason (optional)">
+        <button class="btn small danger" type="submit">Send</button>
+      </form>
+      <p class="muted small">Choosing the Dean of Student Affairs marks the complaint as escalated.</p>
+    </section>
+    {% endif %}
+    {% if c['rating'] %}<section class="card"><h2>Student feedback</h2><p>{{ stars(c['rating']) }}</p>{% if rating_comment %}<p class="pre muted">{{ rating_comment }}</p>{% endif %}</section>{% endif %}
+    <section class="card"><h2>Timeline</h2>{{ timeline(history, true) }}</section>
+  </div>
+</div>
+{% endblock %}

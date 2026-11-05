@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge, priority_pill, stepper, timeline, conversation, files_list, stars %}
+{% block title %}{{ c['reference'] }}{% endblock %}
+{% block content %}
+<p><a href="{{ url_for('student.home') }}">&larr; My complaints</a></p>
+<section class="card">
+  <div class="row-between"><h1>{{ title }}</h1><a class="btn small ghost" href="{{ url_for('student.receipt', reference=c['reference']) }}" target="_blank">Print receipt</a></div>
+  <p><strong>{{ c['reference'] }}</strong> &middot; {{ category_label(c['category']) }} &middot; {{ priority_pill(c['priority']) }} {{ status_badge(c['status']) }}{% if c['anonymous'] %} <span class="tag-internal">Anonymous</span>{% endif %}</p>
+  {{ stepper(c['status']) }}
+  <p class="muted">Handled by <strong>{{ handler }}</strong>.
+    {% if c['status'] in ('Resolved', 'Closed') %}Resolved.{% elif overdue %}<span class="late">This office is past its response deadline.</span>{% elif hours_left is not none %}Response expected within about {{ hours_left if hours_left > 0 else 0 }} hours.{% endif %}</p>
+</section>
+
+<div class="two-col">
+  <div>
+    <section class="card"><h2>Your complaint</h2><p class="pre">{{ description }}</p><h3>Evidence</h3>{{ files_list(files) }}</section>
+    <section class="card">
+      <h2>Messages</h2>
+      {{ conversation(messages) }}
+      {% if c['status'] != 'Closed' %}
+      <form method="post" action="{{ url_for('student.reply', reference=c['reference']) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <label for="message">Add a message for the office</label>
+        <textarea id="message" name="message" rows="4" maxlength="2000" required></textarea>
+        <button class="btn small" type="submit">Send</button>
+      </form>
+      {% endif %}
+    </section>
+  </div>
+  <div>
+    {% if c['status'] == 'Resolved' %}
+    <section class="card highlight">
+      <h2>Is this resolved?</h2>
+      <p>The office marked your complaint as resolved.</p>
+      <div class="btn-row">
+        <form method="post" action="{{ url_for('student.confirm_close', reference=c['reference']) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn small" type="submit">Yes, close it</button></form>
+        <form method="post" action="{{ url_for('student.reopen', reference=c['reference']) }}"><input type="hidden" name="csrf_token" value="{{ csrf_token() }}"><button class="btn small danger" type="submit">No, reopen</button></form>
+      </div>
+    </section>
+    {% endif %}
+    {% if c['status'] in ('Resolved', 'Closed') %}
+    <section class="card">
+      <h2>Rate the service</h2>
+      {% if c['rating'] %}
+        <p>{{ stars(c['rating']) }}</p>{% if rating_comment %}<p class="pre muted">{{ rating_comment }}</p>{% endif %}
+      {% else %}
+      <form method="post" action="{{ url_for('student.rate', reference=c['reference']) }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <div class="star-input">{% for i in range(5, 0, -1) %}<input type="radio" id="star{{ i }}" name="rating" value="{{ i }}"><label for="star{{ i }}" title="{{ i }} stars">&#9733;</label>{% endfor %}</div>
+        <textarea name="comment" rows="3" maxlength="500" placeholder="Tell us how it went (optional)"></textarea>
+        <button class="btn small" type="submit">Send feedback</button>
+      </form>
+      {% endif %}
+    </section>
+    {% endif %}
+    <section class="card"><h2>Progress</h2>{{ timeline(history, false) }}</section>
+  </div>
+</div>
+{% endblock %}

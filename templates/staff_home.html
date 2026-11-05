@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% from "_macros.html" import status_badge, priority_pill, pager, stars %}
+{% block title %}Complaints{% endblock %}
+{% block content %}
+<div class="page-head"><div><h1>{{ role_label(g.user['role']) }}</h1><p class="muted">Complaints assigned to your office.</p></div>
+  <a class="btn small ghost" href="{{ url_for('staff.export', **args.to_dict()) }}">Export CSV</a></div>
+{% if not g.user['totp_enabled'] %}<div class="flash warn"><span>Protect your account: <a href="{{ url_for('auth.twofa_setup') }}">turn on two-step verification</a>.</span></div>{% endif %}
+<div class="stat-row four">
+  <div class="stat"><span class="num" data-count="{{ stats.open }}">0</span><span>Open</span></div>
+  <div class="stat {{ 'alert' if stats.overdue else '' }}"><span class="num" data-count="{{ stats.overdue }}">0</span><span>Overdue</span></div>
+  <div class="stat"><span class="num" data-count="{{ stats.urgent }}">0</span><span>High or urgent</span></div>
+  <div class="stat"><span class="num" data-count="{{ stats.resolved_week }}">0</span><span>Resolved this week</span></div>
+</div>
+{% if stats.rating %}<p class="muted">Student satisfaction: {{ stars(stats.rating|round|int) }} {{ stats.rating }} from {{ stats.rated }} rating{{ '' if stats.rated == 1 else 's' }}.</p>{% endif %}
+<section class="card">
+  <form method="get" class="filters">
+    <input type="search" name="q" value="{{ args.get('q', '') }}" placeholder="Search title or reference" aria-label="Search">
+    <select name="status" aria-label="Status"><option value="">All statuses</option>{% for s in statuses %}<option value="{{ s }}" {{ 'selected' if args.get('status') == s }}>{{ s }}</option>{% endfor %}</select>
+    <select name="priority" aria-label="Priority"><option value="">All priorities</option>{% for p in priorities %}<option value="{{ p }}" {{ 'selected' if args.get('priority') == p }}>{{ p }}</option>{% endfor %}</select>
+    <select name="category" aria-label="Category"><option value="">All categories</option>{% for k, v in categories.items() %}<option value="{{ k }}" {{ 'selected' if args.get('category') == k }}>{{ v }}</option>{% endfor %}</select>
+    <select name="sort" aria-label="Sort"><option value="new">Newest first</option><option value="old" {{ 'selected' if args.get('sort') == 'old' }}>Oldest first</option><option value="due" {{ 'selected' if args.get('sort') == 'due' }}>Deadline soonest</option><option value="priority" {{ 'selected' if args.get('sort') == 'priority' }}>Highest priority</option></select>
+    <label class="check inline"><input type="checkbox" name="overdue" value="1" {{ 'checked' if args.get('overdue') == '1' }}> Overdue only</label>
+    <button class="btn small" type="submit">Apply</button>
+  </form>
+  <p class="muted small">{{ total }} complaint{{ '' if total == 1 else 's' }}</p>
+  {% if items %}
+  <div class="list">
+    {% for i in items %}
+    <a class="row-card {{ 'late-row' if i.overdue }}" href="{{ url_for('staff.view', reference=i.row['reference']) }}">
+      <div><strong>{{ i.title }}</strong><div class="muted small">{{ i.row['reference'] }} &middot; {{ category_label(i.row['category']) }} &middot; {{ i.row['created_at']|when }}{% if i.row['escalated'] %} &middot; <span class="late">Escalated</span>{% endif %}</div></div>
+      <div class="row-badges">{% if i.overdue %}<span class="badge late-badge">Overdue</span>{% endif %}{{ priority_pill(i.row['priority']) }} {{ status_badge(i.row['status']) }}</div>
+    </a>
+    {% endfor %}
+  </div>
+  {{ pager(page) }}
+  {% else %}<div class="empty"><p>No complaints match.</p></div>{% endif %}
+</section>
+{% endblock %}
